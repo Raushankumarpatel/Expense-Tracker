@@ -18,11 +18,10 @@ A Flask-based web application to track your daily expenses, manage budgets, set 
 
 ## 🛠️ Tech Stack
 
-- **Backend:** Python 3.14, Flask 3.x
+- **Backend:** Python 3.x, Flask 3.x
 - **Database:** MySQL
 - **Frontend:** HTML, CSS (Jinja2 templates)
 - **PDF Export:** ReportLab
-- **Package Manager:** [uv](https://github.com/astral-sh/uv)
 
 ---
 
@@ -31,19 +30,31 @@ A Flask-based web application to track your daily expenses, manage budgets, set 
 ### 1. Clone the repository
 
 ```bash
-git clone <your-repo-url>
-cd expense_tracker
+git clone https://github.com/Raushankumarpatel/Expense-Tracker.git
+cd Expense-Tracker
 ```
 
 ### 2. Create virtual environment & install dependencies
 
 ```bash
-uv sync
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# Mac/Linux
+source .venv/bin/activate
+
+pip install -r requirements.txt
 ```
 
 ### 3. Configure environment variables
 
 ```bash
+# Windows
+copy .env.example .env
+
+# Mac/Linux
 cp .env.example .env
 ```
 
@@ -71,6 +82,10 @@ python app.py
 ```
 
 App will be available at: **http://localhost:5000**
+
+> **Default admin account:**
+> Email: `admin@expense.com` | Password: `admin123`
+> *(Change this after first login via Profile page)*
 
 ---
 
@@ -104,12 +119,13 @@ App will be available at: **http://localhost:5000**
 ## 📂 Project Structure
 
 ```
-expense_tracker/
+Expense-Tracker/
 ├── app.py                  # Main Flask application
 ├── config.py               # Database & app configuration
 ├── .env.example            # Environment variables template
+├── .gitignore              # Git ignored files
 ├── requirements.txt        # Python dependencies
-├── pyproject.toml          # Project metadata (uv)
+├── pyproject.toml          # Project metadata
 ├── templates/              # HTML templates (Jinja2)
 │   ├── base.html
 │   ├── index.html
@@ -119,27 +135,8 @@ expense_tracker/
 │   ├── profile.html
 │   ├── add_expense.html
 │   └── edit_expense.html
-├── static/
-│   └── style.css           # Application styles
-└── src/
-    └── expense_tracker/
-        └── __init__.py
-```
-
----
-
-## 🚀 Development
-
-Run with debug mode:
-
-```bash
-python app.py
-```
-
-Run tests:
-
-```bash
-pytest
+└── static/
+    └── style.css           # Application styles
 ```
 
 ---
