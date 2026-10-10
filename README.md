@@ -58,17 +58,7 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your MySQL credentials:
-
-```env
-SECRET_KEY=your_random_secret_key
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=expense_tracker
 ```
-
 ### 4. Create MySQL database
 
 ```sql
