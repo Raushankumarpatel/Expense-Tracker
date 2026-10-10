@@ -25,6 +25,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "types-reportlab>=5.0.0",
 ]
 
 [tool.pyrefly]
@@ -32,3 +33,4 @@ search-path = ["."]
 
 [tool.pyright]
 extraPaths = ["."]
+reportMissingTypeStubs = false
