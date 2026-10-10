@@ -4,6 +4,9 @@ import json
 from datetime import date, datetime
 from decimal import Decimal
 
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
