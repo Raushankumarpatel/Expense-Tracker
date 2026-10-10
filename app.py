@@ -3,6 +3,7 @@ import io
 import json
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from dotenv import load_dotenv
 load_dotenv()  # Load .env file
@@ -23,12 +24,12 @@ from config import SECRET_KEY, DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 
 class DecimalEncoder(json.JSONEncoder):
     """Convert Decimal → float and date/datetime → ISO string."""
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)
-        if isinstance(obj, (date, datetime)):
-            return obj.isoformat()
-        return super().default(obj)
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return float(o)
+        if isinstance(o, (date, datetime)):
+            return o.isoformat()
+        return super().default(o)
 
 
 class CustomJSONProvider(DefaultJSONProvider):
@@ -300,8 +301,11 @@ def create_transaction():
     category = data.get("category", "").strip()
     notes = data.get("notes", "").strip()
     date = data.get("date", "").strip() or datetime.now().strftime("%Y-%m-%d")
+    raw_amount = data.get("amount")
+    if raw_amount is None:
+        return jsonify({"error": "Amount is required"}), 400
     try:
-        amount = float(data.get("amount"))
+        amount = float(raw_amount)
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid amount"}), 400
     if tx_type not in ("income", "expense"):
@@ -336,8 +340,11 @@ def update_transaction(transaction_id):
     category = data.get("category", "").strip()
     notes = data.get("notes", "").strip()
     date = data.get("date", "").strip() or datetime.now().strftime("%Y-%m-%d")
+    raw_amount = data.get("amount")
+    if raw_amount is None:
+        return jsonify({"error": "Amount is required"}), 400
     try:
-        amount = float(data.get("amount"))
+        amount = float(raw_amount)
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid amount"}), 400
     if tx_type not in ("income", "expense"):
@@ -407,8 +414,11 @@ def set_budget():
         return unauthorized
     data = request.get_json() or {}
     category = data.get("category", "").strip()
+    raw_limit = data.get("monthly_limit")
+    if raw_limit is None:
+        return jsonify({"error": "Monthly limit is required"}), 400
     try:
-        monthly_limit = float(data.get("monthly_limit"))
+        monthly_limit = float(raw_limit)
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid amount"}), 400
     if not category:
@@ -468,8 +478,11 @@ def create_goal():
         return unauthorized
     data = request.get_json() or {}
     name = data.get("name", "").strip()
+    raw_target = data.get("target_amount")
+    if raw_target is None:
+        return jsonify({"error": "Target amount is required"}), 400
     try:
-        target_amount = float(data.get("target_amount"))
+        target_amount = float(raw_target)
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid target amount"}), 400
     if not name:
@@ -495,8 +508,11 @@ def update_goal(goal_id):
     if unauthorized:
         return unauthorized
     data = request.get_json() or {}
+    raw_saved = data.get("saved_amount")
+    if raw_saved is None:
+        return jsonify({"error": "Saved amount is required"}), 400
     try:
-        saved_amount = float(data.get("saved_amount"))
+        saved_amount = float(raw_saved)
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid amount"}), 400
     if saved_amount < 0:
@@ -577,7 +593,7 @@ def export_pdf():
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
     styles = getSampleStyleSheet()
-    elements = []
+    elements: list[Any] = []
 
     elements.append(Paragraph("Expense Report", styles["Title"]))
     elements.append(Paragraph(f"Account: {user['name']} ({user['email']})", styles["Normal"]))
