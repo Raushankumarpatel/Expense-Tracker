@@ -3,15 +3,34 @@ __pycache__/
 *.py[oc]
 
 # Virtual environments
-.venv
+.venv/
 
 # Environment variables
 .env
 
-# SQLite database file
+# Database files
 *.db
+*.sqlite3
+
+# Lock files (use requirements.txt instead)
+uv.lock
+
+# Internal dev plan/notes files
+*-plan.md
+
+# Empty src scaffold
+src/
 
 # IDE / OS files
 .vscode/
+.idea/
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+
+# Build/dist artifacts
+dist/
+build/
+*.egg-info/
