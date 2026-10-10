@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Profile - Expense Tracker{% endblock %}
+{% block content %}
+<nav class="topbar">
+    <a class="brand" href="{{ url_for('dashboard') }}"><span>₹</span> ExpenseTracker</a>
+    <div class="topbar-actions">
+        <span class="user-label">{{ user.name }}</span>
+        <a class="button ghost" href="{{ url_for('dashboard') }}">← Dashboard</a>
+        <a class="button danger" href="{{ url_for('logout') }}">Logout</a>
+    </div>
+</nav>
+<main class="dashboard-page" style="max-width:560px;">
+    <header class="page-heading">
+        <div><p class="eyebrow">ACCOUNT</p><h1>Your profile</h1><p class="muted">Update your name or change your password.</p></div>
+    </header>
+
+    <article class="panel">
+        <div class="panel-heading"><div><p class="eyebrow">DETAILS</p><h2>Edit profile</h2></div></div>
+        <div id="profile-error" class="error" style="display:none; margin-bottom:14px;"></div>
+        <div id="profile-success" style="display:none; color:#1f7a5a; margin-bottom:14px; font-size:14px;"></div>
+        <form id="profile-form">
+            <div style="margin-bottom:14px;">
+                <label for="p-email">Email</label>
+                <input id="p-email" type="email" value="{{ user.email }}" disabled style="background:#f4f1e9; color:#888; cursor:not-allowed;">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label for="p-name">Full name</label>
+                <input id="p-name" name="name" type="text" value="{{ user.name }}" required>
+            </div>
+            <hr style="border:none; border-top:1px solid var(--line); margin:20px 0;">
+            <p class="muted" style="font-size:13px; margin-bottom:14px;">Leave password fields empty to keep your current password.</p>
+            <div style="margin-bottom:14px;">
+                <label for="p-current">Current password</label>
+                <input id="p-current" name="current_password" type="password" placeholder="Required only if changing password">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label for="p-new">New password</label>
+                <input id="p-new" name="new_password" type="password" placeholder="Leave blank to keep current">
+            </div>
+            <div class="actions">
+                <button class="button primary" type="submit" id="save-btn">Save changes</button>
+                <a class="button ghost" href="{{ url_for('dashboard') }}">Cancel</a>
+            </div>
+        </form>
+    </article>
+</main>
+<div id="toast-container"></div>
+<script>
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => { toast.classList.add('toast-hide'); setTimeout(() => toast.remove(), 400); }, 3000);
+}
+
+document.getElementById('profile-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('profile-error');
+    const okEl = document.getElementById('profile-success');
+    errEl.style.display = 'none';
+    okEl.style.display = 'none';
+    const data = {
+        name: document.getElementById('p-name').value.trim(),
+        current_password: document.getElementById('p-current').value,
+        new_password: document.getElementById('p-new').value,
+    };
+    const res = await fetch('/api/profile', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data)});
+    const json = await res.json();
+    if (res.ok) {
+        showToast('Profile updated successfully!');
+        okEl.textContent = '✓ ' + json.message;
+        okEl.style.display = 'block';
+        document.getElementById('p-current').value = '';
+        document.getElementById('p-new').value = '';
+    } else {
+        errEl.textContent = json.error || 'Update failed';
+        errEl.style.display = 'block';
+        showToast(json.error || 'Update failed', 'error');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Expense Tracker{% endblock %}
+{% block content %}
+<nav class="topbar">
+    <a class="brand" href="{{ url_for('dashboard') }}"><span>₹</span> ExpenseTracker</a>
+    <div class="topbar-actions"><span class="user-label">{{ user.name }}</span><a class="button ghost" href="{{ url_for('profile') }}">Profile</a><a class="button ghost" href="{{ url_for('export_csv') }}">Export CSV</a><a class="button ghost" href="{{ url_for('export_pdf') }}">Export PDF</a><a class="button danger" href="{{ url_for('logout') }}">Logout</a></div>
+</nav>
+<main class="dashboard-page">
+    <header class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1>Your finances</h1><p class="muted">Keep your income and spending in view.</p></div></header>
+    <section class="stats-grid">
+        <article class="stat-card"><span>Net balance</span><strong id="stat-balance">₹0.00</strong></article>
+        <article class="stat-card income"><span>Total income</span><strong id="stat-income">₹0.00</strong></article>
+        <article class="stat-card expense"><span>Total expenses</span><strong id="stat-expense">₹0.00</strong></article>
+        <article class="stat-card"><span>Transactions</span><strong id="stat-count">0</strong></article>
+        <article class="stat-card"><span>Top spend</span><strong id="stat-top-category" class="stat-top">—</strong><span id="stat-top-amount" class="stat-top-sub"></span></article>
+    </section>
+    <section class="dashboard-grid">
+        <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">NEW ENTRY</p><h2>Add transaction</h2></div></div>
+            <form id="tx-form">
+                <div class="form-grid"><div><label for="tx-type">Type</label><select id="tx-type" name="type"><option value="expense">Expense</option><option value="income">Income</option></select></div><div><label for="tx-amount">Amount</label><input id="tx-amount" name="amount" type="number" min="0.01" step="0.01" required></div></div>
+                <div class="form-grid"><div><label for="tx-title">Title</label><input id="tx-title" name="title" required></div><div><label for="tx-category">Category</label><select id="tx-category" name="category"><option>Food & Dining</option><option>Shopping</option><option>Salary & Income</option><option>Bills & Utilities</option><option>Transportation</option><option>Entertainment</option><option>Healthcare</option><option>Other</option></select></div></div>
+                <div class="form-grid"><div><label for="tx-date">Date</label><input id="tx-date" name="date" type="date" required></div><div><label for="tx-notes">Notes</label><input id="tx-notes" name="notes"></div></div>
+                <button class="button primary full" type="submit" id="add-tx-btn">Add transaction</button>
+            </form>
+        </article>
+        <article class="panel transactions-panel">
+            <div class="panel-heading">
+                <div><p class="eyebrow">ACTIVITY</p><h2>Recent transactions</h2></div>
+            <div class="filter-bar">
+                    <div class="filter-row">
+                        <input id="filter-search" type="text" placeholder="Search…" autocomplete="off">
+                        <select id="filter-type"><option value="">All types</option><option value="income">Income</option><option value="expense">Expense</option></select>
+                        <select id="filter-category"><option value="">All categories</option><option>Food &amp; Dining</option><option>Shopping</option><option>Salary &amp; Income</option><option>Bills &amp; Utilities</option><option>Transportation</option><option>Entertainment</option><option>Healthcare</option><option>Other</option></select>
+                    </div>
+                    <div class="filter-row">
+                        <label style="margin:0; color:var(--muted); font:700 11px Arial,sans-serif; white-space:nowrap;">From</label>
+                        <input id="filter-date-from" type="date" title="From date">
+                        <label style="margin:0; color:var(--muted); font:700 11px Arial,sans-serif; white-space:nowrap;">To</label>
+                        <input id="filter-date-to" type="date" title="To date">
+                        <button class="button ghost small" id="filter-clear-dates" title="Clear date filter" style="display:none;">✕ Clear</button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Title</th><th>Category</th><th>Type</th><th>Amount</th><th></th></tr></thead><tbody id="tx-table-body"><tr><td colspan="6" class="empty">Loading transactions...</td></tr></tbody></table></div>
+        </article>
+    </section>
+
+    <section class="budget-panel panel">
+        <div class="panel-heading">
+            <div><p class="eyebrow">BUDGETS</p><h2>Monthly category limits</h2></div>
+            <button class="button ghost small" onclick="document.getElementById('budget-form-wrap').style.display=document.getElementById('budget-form-wrap').style.display==='none'?'block':'none'">+ Set budget</button>
+        </div>
+        <div id="budget-form-wrap" style="display:none; margin-bottom:18px;">
+            <div class="form-grid" style="max-width:480px;">
+                <div><label>Category</label>
+                    <select id="budget-category">
+                        <option>Food &amp; Dining</option><option>Shopping</option><option>Salary &amp; Income</option>
+                        <option>Bills &amp; Utilities</option><option>Transportation</option><option>Entertainment</option>
+                        <option>Healthcare</option><option>Other</option>
+                    </select>
+                </div>
+                <div><label>Monthly Limit (₹)</label><input id="budget-limit" type="number" min="1" step="1" placeholder="e.g. 5000"></div>
+            </div>
+            <button class="button primary" style="margin-top:10px;" onclick="saveBudget()">Save budget</button>
+        </div>
+        <div id="budget-list"></div>
+    </section>
+
+    <section class="goals-panel panel">
+        <div class="panel-heading">
+            <div><p class="eyebrow">SAVINGS</p><h2>Savings goals</h2></div>
+            <button class="button ghost small" onclick="document.getElementById('goal-form-wrap').style.display=document.getElementById('goal-form-wrap').style.display==='none'?'block':'none'">+ Add goal</button>
+        </div>
+        <div id="goal-form-wrap" style="display:none; margin-bottom:18px;">
+            <div class="form-grid" style="max-width:480px;">
+                <div><label>Goal name</label><input id="goal-name" type="text" placeholder="e.g. New laptop"></div>
+                <div><label>Target amount (₹)</label><input id="goal-target" type="number" min="1" step="1" placeholder="e.g. 50000"></div>
+            </div>
+            <button class="button primary" style="margin-top:10px;" onclick="saveGoal()">Add goal</button>
+        </div>
+        <div id="goals-list"></div>
+    </section>
+
+    <section class="charts-panel panel">
+        <div class="panel-heading"><div><p class="eyebrow">INSIGHTS</p><h2>Spending overview</h2></div></div>
+        <div class="charts-grid">
+            <canvas id="chart-category"></canvas>
+            <canvas id="chart-monthly"></canvas>
+        </div>
+    </section>
+
+    <div id="edit-modal" class="modal-overlay" style="display:none;">
+        <div class="modal-box panel">
+            <div class="panel-heading"><div><p class="eyebrow">EDIT ENTRY</p><h2>Edit transaction</h2></div></div>
+            <div id="edit-error" class="error" style="display:none;"></div>
+            <form id="edit-form">
+                <div class="form-grid">
+                    <div><label for="edit-type">Type</label><select id="edit-type" name="type"><option value="expense">Expense</option><option value="income">Income</option></select></div>
+                    <div><label for="edit-amount">Amount</label><input id="edit-amount" name="amount" type="number" min="0.01" step="0.01" required></div>
+                </div>
+                <div class="form-grid">
+                    <div><label for="edit-title">Title</label><input id="edit-title" name="title" required></div>
+                    <div><label for="edit-category">Category</label><select id="edit-category" name="category"><option>Food &amp; Dining</option><option>Shopping</option><option>Salary &amp; Income</option><option>Bills &amp; Utilities</option><option>Transportation</option><option>Entertainment</option><option>Healthcare</option><option>Other</option></select></div>
+                </div>
+                <div class="form-grid">
+                    <div><label for="edit-date">Date</label><input id="edit-date" name="date" type="date" required></div>
+                    <div><label for="edit-notes">Notes</label><input id="edit-notes" name="notes"></div>
+                </div>
+                <div class="actions">
+                    <button class="button primary" type="submit">Save changes</button>
+                    <button class="button ghost" type="button" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+<div id="toast-container"></div>
+<script>
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => { toast.classList.add('toast-hide'); setTimeout(() => toast.remove(), 400); }, 3000);
+}
+
+const form = document.getElementById('tx-form');
+const dateInput = document.getElementById('tx-date');
+dateInput.value = new Date().toISOString().split('T')[0];
+let transactions = [];
+let categoryChart = null, monthlyChart = null;
+async function loadData() {
+    try {
+        const response = await fetch('{{ url_for("get_transactions") }}');
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Server error ${response.status}`);
+        }
+        const data = await response.json();
+        transactions = Array.isArray(data) ? data : [];
+        render();
+    } catch (e) {
+        document.getElementById('tx-table-body').innerHTML =
+            `<tr><td colspan="6" class="empty">Failed to load transactions: ${e.message}</td></tr>`;
+        showToast('Failed to load transactions: ' + e.message, 'error');
+    }
+}
+function render() {
+    let income = 0, expense = 0;
+    transactions.forEach(tx => tx.type === 'income' ? income += tx.amount : expense += tx.amount);
+    document.getElementById('stat-income').textContent = `₹${income.toFixed(2)}`;
+    document.getElementById('stat-expense').textContent = `₹${expense.toFixed(2)}`;
+    document.getElementById('stat-balance').textContent = `₹${(income - expense).toFixed(2)}`;
+    document.getElementById('stat-count').textContent = transactions.length;
+    // Top category badge
+    const catTotalsAll = {};
+    transactions.filter(tx => tx.type === 'expense').forEach(tx => { catTotalsAll[tx.category] = (catTotalsAll[tx.category] || 0) + tx.amount; });
+    const topCat = Object.entries(catTotalsAll).sort((a,b) => b[1]-a[1])[0];
+    document.getElementById('stat-top-category').textContent = topCat ? topCat[0] : '—';
+    document.getElementById('stat-top-amount').textContent = topCat ? `₹${topCat[1].toFixed(2)}` : '';
+    renderFiltered();
+    renderCharts();
+    if (typeof renderBudgets === 'function') renderBudgets();
+}
+function renderFiltered() {
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    const typeF = document.getElementById('filter-type').value;
+    const catF = document.getElementById('filter-category').value;
+    const dateFrom = document.getElementById('filter-date-from').value;
+    const dateTo = document.getElementById('filter-date-to').value;
+    const clearBtn = document.getElementById('filter-clear-dates');
+    clearBtn.style.display = (dateFrom || dateTo) ? 'inline-block' : 'none';
+    const filtered = transactions.filter(tx =>
+        (!search || tx.title.toLowerCase().includes(search) || (tx.notes||'').toLowerCase().includes(search)) &&
+        (!typeF || tx.type === typeF) &&
+        (!catF || tx.category === catF) &&
+        (!dateFrom || tx.date >= dateFrom) &&
+        (!dateTo || tx.date <= dateTo)
+    );
+    const body = document.getElementById('tx-table-body');
+    body.innerHTML = filtered.length ? filtered.map(tx => `<tr><td>${tx.date}</td><td><strong>${tx.title}</strong>${tx.notes ? `<small>${tx.notes}</small>` : ''}</td><td>${tx.category}</td><td><span class="tag ${tx.type}">${tx.type}</span></td><td class="amount-${tx.type}">${tx.type === 'income' ? '+' : '-'}₹${tx.amount.toFixed(2)}</td><td><button class="edit-button" onclick="openEditModal(transactions.find(t=>t.id===${tx.id}))" title="Edit transaction">✎</button><button class="delete-button" onclick="deleteTransaction(${tx.id},'${tx.title.replace(/'/g,"\\'")}')" title="Delete transaction">×</button></td></tr>`).join('') : '<tr><td colspan="6" class="empty">No transactions match.</td></tr>';
+}
+function renderCharts() {
+    // --- Doughnut: category-wise expenses ---
+    const catTotals = {};
+    transactions.filter(tx => tx.type === 'expense').forEach(tx => {
+        catTotals[tx.category] = (catTotals[tx.category] || 0) + tx.amount;
+    });
+    const catLabels = Object.keys(catTotals);
+    const catData = Object.values(catTotals);
+    const palette = ['#1f7a5a','#ba554d','#f1c75b','#4a90a4','#9b59b6','#e67e22','#2ecc71','#95a5a6'];
+    if (categoryChart) categoryChart.destroy();
+    categoryChart = new Chart(document.getElementById('chart-category'), {
+        type: 'doughnut',
+        data: { labels: catLabels, datasets: [{ data: catData, backgroundColor: palette, borderWidth: 1, borderColor: '#f4f1e9' }] },
+        options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Arial', size: 12 }, color: '#6e7c76', boxWidth: 14 } } }, cutout: '62%' }
+    });
+    // --- Bar: monthly income vs expense (last 6 months) ---
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push(d.toISOString().slice(0, 7));
+    }
+    const incomeByMonth = {}, expenseByMonth = {};
+    months.forEach(m => { incomeByMonth[m] = 0; expenseByMonth[m] = 0; });
+    transactions.forEach(tx => {
+        const m = tx.date.slice(0, 7);
+        if (tx.type === 'income' && incomeByMonth[m] !== undefined) incomeByMonth[m] += tx.amount;
+        if (tx.type === 'expense' && expenseByMonth[m] !== undefined) expenseByMonth[m] += tx.amount;
+    });
+    const shortLabels = months.map(m => { const [y, mo] = m.split('-'); return new Date(y, mo-1).toLocaleString('default', {month:'short', year:'2-digit'}); });
+    if (monthlyChart) monthlyChart.destroy();
+    monthlyChart = new Chart(document.getElementById('chart-monthly'), {
+        type: 'bar',
+        data: {
+            labels: shortLabels,
+            datasets: [
+                { label: 'Income', data: months.map(m => incomeByMonth[m]), backgroundColor: '#1f7a5a', borderRadius: 4 },
+                { label: 'Expense', data: months.map(m => expenseByMonth[m]), backgroundColor: '#ba554d', borderRadius: 4 }
+            ]
+        },
+        options: { plugins: { legend: { position: 'bottom', labels: { font: { family: 'Arial', size: 12 }, color: '#6e7c76', boxWidth: 14 } } }, scales: { x: { ticks: { color: '#6e7c76', font: { family: 'Arial' } }, grid: { display: false } }, y: { ticks: { color: '#6e7c76', font: { family: 'Arial' }, callback: v => '₹' + v }, grid: { color: '#d9ded5' } } } }
+    });
+}
+form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(form));
+    data.amount = Number(data.amount);
+    const response = await fetch('{{ url_for("create_transaction") }}', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+    if (response.ok) {
+        form.reset();
+        dateInput.value = new Date().toISOString().split('T')[0];
+        loadData();
+        showToast('Transaction added successfully!');
+    } else {
+        const err = await response.json();
+        showToast(err.error || 'Failed to add transaction', 'error');
+    }
+});
+async function deleteTransaction(id, title) {
+    if (!confirm(`Delete "${title}"?\nThis cannot be undone.`)) return;
+    const response = await fetch(`/api/transactions/${id}`, {method: 'DELETE'});
+    if (response.ok) { loadData(); showToast(`"${title}" deleted.`, 'error'); }
+    else showToast('Failed to delete transaction', 'error');
+}
+document.getElementById('filter-search').addEventListener('input', renderFiltered);
+document.getElementById('filter-type').addEventListener('change', renderFiltered);
+document.getElementById('filter-category').addEventListener('change', renderFiltered);
+document.getElementById('filter-date-from').addEventListener('change', renderFiltered);
+document.getElementById('filter-date-to').addEventListener('change', renderFiltered);
+document.getElementById('filter-clear-dates').addEventListener('click', function() {
+    document.getElementById('filter-date-from').value = '';
+    document.getElementById('filter-date-to').value = '';
+    this.style.display = 'none';
+    renderFiltered();
+});
+
+let editingId = null;
+function openEditModal(tx) {
+    editingId = tx.id;
+    document.getElementById('edit-type').value = tx.type;
+    document.getElementById('edit-amount').value = tx.amount;
+    document.getElementById('edit-title').value = tx.title;
+    document.getElementById('edit-category').value = tx.category;
+    document.getElementById('edit-date').value = tx.date;
+    document.getElementById('edit-notes').value = tx.notes || '';
+    document.getElementById('edit-error').style.display = 'none';
+    document.getElementById('edit-modal').style.display = 'flex';
+}
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+    editingId = null;
+}
+document.getElementById('edit-modal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+document.getElementById('edit-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(this));
+    data.amount = Number(data.amount);
+    const response = await fetch(`/api/transactions/${editingId}`, {method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)});
+    if (response.ok) { closeEditModal(); loadData(); showToast('Transaction updated successfully!'); }
+    else { const err = await response.json(); const el = document.getElementById('edit-error'); el.textContent = err.error || 'Update failed'; el.style.display = 'block'; showToast(err.error || 'Update failed', 'error'); }
+});
+
+// ---- Budget logic ----
+let budgets = [];
+async function loadBudgets() {
+    const res = await fetch('/api/budgets');
+    budgets = await res.json();
+    renderBudgets();
+}
+function renderBudgets() {
+    const now = new Date();
+    const currentMonth = now.toISOString().slice(0, 7);
+    const spentByCategory = {};
+    transactions.filter(tx => tx.type === 'expense' && tx.date.slice(0,7) === currentMonth)
+        .forEach(tx => { spentByCategory[tx.category] = (spentByCategory[tx.category] || 0) + tx.amount; });
+
+    const container = document.getElementById('budget-list');
+    if (!budgets.length) {
+        container.innerHTML = '<p class="muted" style="padding:8px 0; font-size:13px;">No budgets set. Click "+ Set budget" to add one.</p>';
+        return;
+    }
+    container.innerHTML = budgets.map(b => {
+        const spent = spentByCategory[b.category] || 0;
+        const pct = Math.min(100, (spent / b.monthly_limit) * 100).toFixed(1);
+        const over = spent > b.monthly_limit;
+        return `<div class="budget-row">
+            <div class="budget-row-top">
+                <span class="budget-cat">${b.category}</span>
+                <span class="budget-amounts ${over ? 'over' : ''}">₹${spent.toFixed(2)} / ₹${b.monthly_limit.toFixed(2)}</span>
+                <button class="delete-button" style="font-size:16px; margin-left:8px;" onclick="deleteBudget('${b.category.replace(/'/g,"\\'")}')">×</button>
+            </div>
+            <div class="budget-bar-bg"><div class="budget-bar-fill ${over ? 'over' : ''}" style="width:${pct}%"></div></div>
+            ${over ? `<small class="budget-warn">⚠ Over budget by ₹${(spent - b.monthly_limit).toFixed(2)}!</small>` : ''}
+        </div>`;
+    }).join('');
+}
+async function saveBudget() {
+    const category = document.getElementById('budget-category').value;
+    const monthly_limit = parseFloat(document.getElementById('budget-limit').value);
+    if (!monthly_limit || monthly_limit <= 0) { showToast('Enter a valid limit', 'error'); return; }
+    const res = await fetch('/api/budgets', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({category, monthly_limit})});
+    if (res.ok) {
+        document.getElementById('budget-limit').value = '';
+        document.getElementById('budget-form-wrap').style.display = 'none';
+        showToast(`Budget set for ${category}`);
+        loadBudgets();
+    } else { const e = await res.json(); showToast(e.error || 'Failed', 'error'); }
+}
+async function deleteBudget(category) {
+    const res = await fetch(`/api/budgets/${encodeURIComponent(category)}`, {method:'DELETE'});
+    if (res.ok) { showToast(`Budget for ${category} removed`, 'error'); loadBudgets(); }
+}
+
+// ---- Savings Goals logic ----
+async function loadGoals() {
+    const res = await fetch('/api/goals');
+    const goals = await res.json();
+    renderGoals(goals);
+}
+function renderGoals(goals) {
+    const container = document.getElementById('goals-list');
+    if (!goals.length) {
+        container.innerHTML = '<p class="muted" style="padding:8px 0; font-size:13px;">No goals yet. Click "+ Add goal" to start saving!</p>';
+        return;
+    }
+    container.innerHTML = goals.map(g => {
+        const pct = Math.min(100, (g.saved_amount / g.target_amount) * 100).toFixed(1);
+        const done = g.saved_amount >= g.target_amount;
+        return `<div class="budget-row">
+            <div class="budget-row-top">
+                <span class="budget-cat">${g.name} ${done ? '🎉' : ''}</span>
+                <span class="budget-amounts ${done ? '' : ''}">₹${g.saved_amount.toFixed(2)} / ₹${g.target_amount.toFixed(2)}</span>
+                <button class="edit-button" onclick="promptGoalUpdate(${g.id}, ${g.saved_amount})" title="Update saved amount">✎</button>
+                <button class="delete-button" style="font-size:16px;" onclick="deleteGoal(${g.id}, '${g.name.replace(/'/g,"\\'")}')">×</button>
+            </div>
+            <div class="budget-bar-bg"><div class="budget-bar-fill" style="width:${pct}%; background:${done?'#4a90a4':'#1f7a5a'}"></div></div>
+            <small style="color:var(--muted); font-size:12px;">${pct}% saved${done ? ' — Goal reached!' : ''}</small>
+        </div>`;
+    }).join('');
+}
+async function saveGoal() {
+    const name = document.getElementById('goal-name').value.trim();
+    const target_amount = parseFloat(document.getElementById('goal-target').value);
+    if (!name) { showToast('Enter a goal name', 'error'); return; }
+    if (!target_amount || target_amount <= 0) { showToast('Enter a valid target amount', 'error'); return; }
+    const res = await fetch('/api/goals', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name, target_amount})});
+    if (res.ok) {
+        document.getElementById('goal-name').value = '';
+        document.getElementById('goal-target').value = '';
+        document.getElementById('goal-form-wrap').style.display = 'none';
+        showToast(`Goal "${name}" added!`);
+        loadGoals();
+    } else { const e = await res.json(); showToast(e.error || 'Failed', 'error'); }
+}
+function promptGoalUpdate(id, current) {
+    const val = prompt('Update saved amount (₹):', current);
+    if (val === null) return;
+    const saved_amount = parseFloat(val);
+    if (isNaN(saved_amount) || saved_amount < 0) { showToast('Invalid amount', 'error'); return; }
+    fetch(`/api/goals/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({saved_amount})})
+        .then(r => r.ok ? (showToast('Goal updated!'), loadGoals()) : showToast('Failed to update', 'error'));
+}
+async function deleteGoal(id, name) {
+    if (!confirm(`Delete goal "${name}"?`)) return;
+    const res = await fetch(`/api/goals/${id}`, {method:'DELETE'});
+    if (res.ok) { showToast(`Goal "${name}" deleted`, 'error'); loadGoals(); }
+}
+
+loadData();
+loadBudgets();
+loadGoals();
+</script>
+{% endblock %}

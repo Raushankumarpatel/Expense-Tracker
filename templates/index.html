@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Expense Tracker{% endblock %}
+{% block content %}
+<main class="landing-page">
+    <section class="landing-card">
+        <p class="eyebrow">PERSONAL FINANCE</p>
+        <h1>ExpenseTracker</h1>
+        <p>Track income, expenses, and your spending patterns in one simple dashboard.</p>
+        <div class="actions">
+            <a class="button primary" href="{{ url_for('login') }}">Log in</a>
+            <a class="button secondary" href="{{ url_for('register') }}">Create account</a>
+        </div>
+    </section>
+</main>
+{% endblock %}
