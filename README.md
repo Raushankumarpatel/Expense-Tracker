@@ -58,7 +58,8 @@ copy .env.example .env
 cp .env.example .env
 ```
 
-```
+Open `.env` and set your MySQL credentials (DB_USER, DB_PASSWORD, etc.).
+
 ### 4. Create MySQL database
 
 ```sql

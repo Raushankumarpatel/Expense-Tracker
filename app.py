@@ -63,62 +63,65 @@ def db_cursor(connection):
 
 
 def init_db():
-    connection = get_db()
-    cursor = db_cursor(connection)
+    try:
+        connection = get_db()
+        cursor = db_cursor(connection)
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            name VARCHAR(255) NOT NULL,
-            password_hash VARCHAR(512) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS transactions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            type ENUM('income','expense') NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            amount DECIMAL(12,2) NOT NULL,
-            category VARCHAR(100) NOT NULL,
-            date DATE NOT NULL,
-            notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS budgets (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            category VARCHAR(100) NOT NULL,
-            monthly_limit DECIMAL(12,2) NOT NULL,
-            UNIQUE KEY unique_user_cat (user_id, category),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS savings_goals (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            name VARCHAR(255) NOT NULL,
-            target_amount DECIMAL(12,2) NOT NULL,
-            saved_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                password_hash VARCHAR(512) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                type ENUM('income','expense') NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                amount DECIMAL(12,2) NOT NULL,
+                category VARCHAR(100) NOT NULL,
+                date DATE NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS budgets (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                category VARCHAR(100) NOT NULL,
+                monthly_limit DECIMAL(12,2) NOT NULL,
+                UNIQUE KEY unique_user_cat (user_id, category),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS savings_goals (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                target_amount DECIMAL(12,2) NOT NULL,
+                saved_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
 
-    cursor.execute("SELECT id FROM users WHERE email = %s", ("admin@expense.com",))
-    if not cursor.fetchone():
-        cursor.execute(
-            "INSERT INTO users (email, name, password_hash) VALUES (%s, %s, %s)",
-            ("admin@expense.com", "Admin User", generate_password_hash("admin123")),
-        )
-    connection.commit()
-    cursor.close()
-    connection.close()
+        cursor.execute("SELECT id FROM users WHERE email = %s", ("admin@expense.com",))
+        if not cursor.fetchone():
+            cursor.execute(
+                "INSERT INTO users (email, name, password_hash) VALUES (%s, %s, %s)",
+                ("admin@expense.com", "Admin User", generate_password_hash("admin123")),
+            )
+        connection.commit()
+        cursor.close()
+        connection.close()
+    except Exception as exc:
+        print(f"Warning: Database initialization skipped or failed ({exc}). Make sure MySQL is running.")
 
 
 def get_current_user():
