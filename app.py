@@ -3,7 +3,7 @@ import io
 import json
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from dotenv import load_dotenv
 load_dotenv()  # Load .env file
@@ -144,6 +144,25 @@ def login_required_json():
     return None
 
 
+def get_json_object():
+    data = request.get_json(silent=True)
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ValueError("Request body must be a JSON object")
+    return data
+
+
+def normalize_date(value: str | None):
+    raw_date = (value or "").strip()
+    if not raw_date:
+        return datetime.now().strftime("%Y-%m-%d")
+    try:
+        return datetime.strptime(raw_date, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("Invalid date") from exc
+
+
 @app.route("/")
 def index():
     if session.get("user_id"):
@@ -161,7 +180,7 @@ def login():
         connection = get_db()
         cursor = db_cursor(connection)
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
-        user = cursor.fetchone()
+        user = cast(dict[str, Any] | None, cursor.fetchone())
         cursor.close()
         connection.close()
         if user and check_password_hash(user["password_hash"], password):
@@ -236,7 +255,10 @@ def profile():
 def update_profile():
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 401
-    data = request.get_json() or {}
+    try:
+        data = get_json_object()
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     name = data.get("name", "").strip()
     new_password = data.get("new_password", "").strip()
     current_password = data.get("current_password", "").strip()
@@ -245,13 +267,17 @@ def update_profile():
     connection = get_db()
     cursor = db_cursor(connection)
     cursor.execute("SELECT * FROM users WHERE id = %s", (session["user_id"],))
-    user = cursor.fetchone()
+    user: dict[str, Any] = cursor.fetchone()
+    if user is None:
+        cursor.close()
+        connection.close()
+        return jsonify({"error": "User not found"}), 404
     if new_password:
         if not current_password:
             cursor.close()
             connection.close()
             return jsonify({"error": "Current password is required to change password"}), 400
-        if not check_password_hash(user["password_hash"], current_password):
+        if not check_password_hash(str(user["password_hash"]), current_password):
             cursor.close()
             connection.close()
             return jsonify({"error": "Current password is incorrect"}), 400
@@ -295,12 +321,18 @@ def create_transaction():
     unauthorized = login_required_json()
     if unauthorized:
         return unauthorized
-    data = request.get_json() or {}
+    try:
+        data = get_json_object()
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     tx_type = data.get("type")
     title = data.get("title", "").strip()
     category = data.get("category", "").strip()
     notes = data.get("notes", "").strip()
-    date = data.get("date", "").strip() or datetime.now().strftime("%Y-%m-%d")
+    try:
+        date = normalize_date(data.get("date"))
+    except ValueError:
+        return jsonify({"error": "Invalid date"}), 400
     raw_amount = data.get("amount")
     if raw_amount is None:
         return jsonify({"error": "Amount is required"}), 400
@@ -334,12 +366,18 @@ def update_transaction(transaction_id):
     unauthorized = login_required_json()
     if unauthorized:
         return unauthorized
-    data = request.get_json() or {}
+    try:
+        data = get_json_object()
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     tx_type = data.get("type")
     title = data.get("title", "").strip()
     category = data.get("category", "").strip()
     notes = data.get("notes", "").strip()
-    date = data.get("date", "").strip() or datetime.now().strftime("%Y-%m-%d")
+    try:
+        date = normalize_date(data.get("date"))
+    except ValueError:
+        return jsonify({"error": "Invalid date"}), 400
     raw_amount = data.get("amount")
     if raw_amount is None:
         return jsonify({"error": "Amount is required"}), 400
@@ -412,7 +450,10 @@ def set_budget():
     unauthorized = login_required_json()
     if unauthorized:
         return unauthorized
-    data = request.get_json() or {}
+    try:
+        data = get_json_object()
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     category = data.get("category", "").strip()
     raw_limit = data.get("monthly_limit")
     if raw_limit is None:
@@ -446,8 +487,11 @@ def delete_budget(category):
     cursor = db_cursor(connection)
     cursor.execute("DELETE FROM budgets WHERE user_id = %s AND category = %s", (session["user_id"], category))
     connection.commit()
+    rowcount = cursor.rowcount
     cursor.close()
     connection.close()
+    if rowcount == 0:
+        return jsonify({"error": "Budget not found"}), 404
     return jsonify({"message": "Budget removed"})
 
 
@@ -476,7 +520,10 @@ def create_goal():
     unauthorized = login_required_json()
     if unauthorized:
         return unauthorized
-    data = request.get_json() or {}
+    try:
+        data = get_json_object()
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     name = data.get("name", "").strip()
     raw_target = data.get("target_amount")
     if raw_target is None:
@@ -507,7 +554,10 @@ def update_goal(goal_id):
     unauthorized = login_required_json()
     if unauthorized:
         return unauthorized
-    data = request.get_json() or {}
+    try:
+        data = get_json_object()
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     raw_saved = data.get("saved_amount")
     if raw_saved is None:
         return jsonify({"error": "Saved amount is required"}), 400
